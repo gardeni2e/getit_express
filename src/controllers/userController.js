@@ -18,24 +18,31 @@ export const getAllUsers = async (req, res, next) => {
   }
 };
 
-
-
-// 단일 조회
-export const getUserById = (req, res) => {
-  const id = Number(req.params.id);
-  const user = users.find(u => u.id === id);
-  if (!user) {
-  return res.status(404).json({ error: 'User not found' });
+// 단일조회
+export const getUserById = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id); // /:id 있는 것들은 모두 이 코드 필요한 듯(어떤 것 조회/수정/삭제할지 파악)
+    const [rows] = await pool.query('SELECT id, name, email, created_at FROM users WHERE id = ? ', id);
+    if(rows.length === 0) // !rows가 빈 배열로 반환되어도 True로 판단하니깐 이렇게 수정해야 함
+    {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(200).json({ data: rows });
+  } catch (err) {
+    next(err);
   }
-  // else
-  res.json({ data: user });
 };
 
 // 생성
 export const createUser = async (req, res, next) => {
   const { name, email } = req.body;
-  if (!name || !email) {
+  if (!name || !email) { // 올바른 요청인지 검사
     return res.status(400).json({ error: 'Name and email are required' });
+  }
+  const [rows] = await pool.query('SELECT email, created_at FROM users WHERE email = ? ', email); // 이메일 중복 검사
+  if(rows.length !== 0)
+  {
+    return res.status(409).json({ error: 'Email Duplication' });
   }
   try {
     const [result] = await pool.execute(
@@ -44,24 +51,32 @@ export const createUser = async (req, res, next) => {
     );
     const insertedId = result.insertId;
     res.status(201).json({ data: { id: insertedId, name, email } });
-  } catch (err) {
+  } catch (err) { // GPT 피셜 이메일 중복시 if (err.code === 'ER_DUP_ENTRY')로 처리 가능하다는...
     next(err);
   }
 };
 
-
-
 // 전체 교체 (PUT)
-export const replaceUser = (req, res) => {
+export const replaceUser = async (req, res, next) => {
   const id = Number(req.params.id);
-  const index = users.findIndex(u => u.id === id);
-  if (index === -1) return res.status(404).json({ error: 'User not found' });
-  const { name, email } = req.body;
-  if (!name || !email) {
+   try {
+    const [rows] = await pool.query('SELECT id, name FROM users WHERE id = ? ', id); // 교체 원하는게 있는지부터 확인
+    if(rows.length === 0)
+        {
+            return res.status(404).json({ error: 'User not found' });
+        }
+    const { name, email } = req.body;
+    if (!name || !email)
+    {
     return res.status(400).json({ error: 'Name and email are required' });
+    }
+   await pool.execute( // result(변경된 값이 뭔지 들어있지 않음, 그냥 변경 관련 정보 표시해줌) 사용 안하니 const [result] 필요 없음
+      'UPDATE users SET name = ?, email = ? WHERE id = ?',
+      [name, email, id]);
+    res.json({ data: id, name, email }); // PUT 수행하고 정보 표시할 때 created_at까지 모두 표시하고 싶으면 .query로 조회해야함
+  } catch (err) {
+    next(err);
   }
-  users[index] = { id, name, email };
-  res.json({ data: users[index] });
 };
 
 /*
@@ -77,10 +92,18 @@ export const updateUser = (req, res) => {
 };
 */
 
-// 삭제
-export const deleteUser = (req, res) => {
-  const id = Number(req.params.id);
-  // id가 같은 값이 없다면 404 Not found를 줘야 하지 않을까?
-  users = users.filter(u => u.id !== id);
-  res.status(204).send(); // No Content
-};
+export const deleteUser = async (req, res, next) => {
+    const id = Number(req.params.id);
+    try {
+    const [rows] = await pool.query('SELECT id, name FROM users WHERE id = ? ', id);
+    if(rows.length === 0)
+    {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    await pool.execute('DELETE FROM users WHERE id = ?', [id]); // .excute는 파라미터 배열로 줘야 함
+    res.status(204).send(); // No Content
+    }
+    catch (err) {
+        next(err);
+    }
+}
