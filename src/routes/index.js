@@ -7,6 +7,6 @@ const router = Router(); // 라우트를 다른 모듈로 분리할 때 사용 (
 
 router.use('/users', userRouter);
 // 다른 라우터를 추가할 수 있습니다.
-router.use('/product', productRouter);
+router.use('/products', productRouter);
 
 export default router;

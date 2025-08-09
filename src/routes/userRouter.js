@@ -1,10 +1,20 @@
-import { Router } from "express";
-import { getUsers, createUser } from "../controllers/userController.js";
+import express from 'express';
+import {
+  getAllUsers,
+  getUserById,
+  createUser,
+  replaceUser,
+ // updateUser,
+  deleteUser
+} from '../controllers/userController.js';
 
-const userRouter = Router(); 
+const router = express.Router();
 
-// http://localhost:3000/users/ << 이 뒤에 아무것도 안붙는다는 뜻
-userRouter.get('/', getUsers); // controller로 분리
-userRouter.post('/', createUser);
+router.get('/',      getAllUsers);    // GET    /users
+router.get('/:id',   getUserById);    // GET    /users/:id (:id는 동적으로 변하는 부분)
+router.post('/',     createUser);     // POST   /users
+router.put('/:id',   replaceUser);    // PUT    /users/:id
+//router.patch('/:id', updateUser);     // PATCH  /users/:id
+router.delete('/:id', deleteUser);    // DELETE /users/:id
 
-export default userRouter;
+export default router;
