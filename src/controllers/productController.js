@@ -1,66 +1,40 @@
-// 임시 데이터 (In-Memory)
-let products = [];
-let nextId = 1;
+import pool from '../db.js';
 
-// 전체 조회
-export const getAllProducts = (req, res) => {
-  res.status(200).json({ data: products });
-};
-
-// 단일 조회
-export const getProductById = (req, res) => {
-  const id = Number(req.params.id);
-  const product = products.find(u => u.id === id);
-  if (!product) {
-  return res.status(404).json({ error: 'Product not found' });
+// 전체 상품 조회
+export const getAllProducts = async (req, res, next) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM products');
+    res.json({ data: rows });
+  } catch (err) {
+    next(err);
   }
-  // else
-  res.json({ data: product });
 };
 
-// 생성
-export const createProduct = (req, res) => {
+// 상품 생성
+export const createProduct = async (req, res, next) => {
   const { name, price } = req.body;
-  if (!name || !price) {
-    return res.status(400).json({ error: 'Name and price are required' });
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO products (name, price) VALUES (?, ?)',
+      [name, price]
+    );
+    res.status(201).json({ data: { id: result.insertId, name, price } });
+  } catch (err) {
+    next(err);
   }
-  const newProduct = { id: nextId++, name, price };
-  products.push(newProduct);
-  res.status(201).json({ data: newProduct });
 };
 
-// 전체 교체 (PUT)
-export const replaceProduct = (req, res) => {
-  const id = Number(req.params.id);
-  const index = products.findIndex(u => u.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Product not found' });
-  const { name, price } = req.body;
-  if (!name || !price) {
-    return res.status(400).json({ error: 'Name and price are required' });
+// 단일 상품 조회
+export const getProductById = async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM products WHERE id = ?',
+      [id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json({ data: rows[0] });
+  } catch (err) {
+    next(err);
   }
-  products[index] = { id, name, price };
-  res.json({ data: products[index] });
-};
-
-// 일부 수정 (PATCH)
-export const updateProduct = (req, res) => {
-  const id = Number(req.params.id);
-  const product = products.find(u => u.id === id);
-  if (!product) return res.status(404).json({ error: 'Product not found' });
-  const { name, price } = req.body;
-  if (name) product.name = name;
-  if (price) product.price = price;
-  res.json({ data: product });
-};
-
-// 삭제
-export const deleteProduct = (req, res) => {
-  const id = Number(req.params.id);
-  // id가 같은 값이 없다면 404 Not found를 줘야 하지 않을까?
-  const product = products.find(u => u.id === id);
-  if (!product) {
-  return res.status(404).json({ error: 'Product not found' });
-  }
-  products = products.filter(u => u.id !== id);
-  res.status(204).send(); // No Content
 };
