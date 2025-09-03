@@ -71,6 +71,8 @@ app.use(logger);
 app.use(delay);
 app.use(errorHandler);
 
+app.get('/health', (req, res) => res.json({ ok: true, env: NODE_ENV }));
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
