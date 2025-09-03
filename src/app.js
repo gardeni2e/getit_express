@@ -1,6 +1,13 @@
 import express from 'express';
 import dayjs from 'dayjs';
 import router from './routes/index.js';
+import cors from 'cors';
+import morgan from 'morgan';
+import helmet from 'helmet';
+import { delay } from './middlewares/delay.js';
+import { logger } from './middlewares/logger.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -56,6 +63,13 @@ app.post('/', (req, res) => {
 */
 
 app.use('/', router); // 모든 라우팅은 index.js가 담당 (이 코드 한 줄이면 끝)
+app.use(cors());
+app.use(morgan('tiny'));
+app.use(helmet());
+
+app.use(logger);
+app.use(delay);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
